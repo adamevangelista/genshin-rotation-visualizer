@@ -1,0 +1,11 @@
+Mualani Team 1: Sucrose Variant
+
+mualani attack; # duration=0.5 # label=N1
+xilonen skill; # duration=1.0 # label=Skill
+xilonen attack:2; # duration=1.0 # label=N2
+sucrose skill; # duration=0.5 # label=Skill
+mavuika skill; # duration=1.0 # label=Tap Skill
+mavuika burst; # duration=2.5 # label=Burst
+mualani skill; # duration=1.0 # label=Skill
+mualani attack:3; # duration=8.0 # label=3 Full Stack Normal
+mualani burst; # duration=2.0 # label=Burst

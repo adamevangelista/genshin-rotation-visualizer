@@ -1,0 +1,11 @@
+Mualani Team 3: Vaporize Variant
+
+mualani attack; # duration=0.5 # label=N1
+zhongli skill; # duration=2.0 # label=Hold Skill
+kazuha skill; # duration=1.0 # label=Tap Skill
+kazuha high_plunge; # duration=1.0 # label=Plunge
+xiangling burst; # duration=1.5 # label=Burst
+xiangling skill; # duration=1.0 # label=Skill
+mualani skill; # duration=1.0 # label=Skill
+mualani attack:3; # duration=8.0 # label=3 Full Stack Normal
+mualani burst; # duration=2.0 # label=Burst

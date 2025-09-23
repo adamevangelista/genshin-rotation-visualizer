@@ -1,0 +1,10 @@
+Xiao Double Geo Rotation
+
+zhongli skill; # duration=2.0 # label=Hold Skill
+albedo skill; # duration=2.0 # label=Skill
+jean skill; # duration=1.5.0 # label=Skill
+jean burst; # duration=2.0 # label=Burst
+xiao skill; # duration=1.0 # label=Skill
+xiao skill; # duration=1.0 # label=Skill
+xiao burst; # duration=2.0 # label=Burst
+xiao high_plunge:8; # duration=12.0 # label=8x High Plunge

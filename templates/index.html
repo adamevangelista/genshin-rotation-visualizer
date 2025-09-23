@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genshin Rotation Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Reference to external character database -->
+    <script src="/static/character_db.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex flex-col items-center p-4 md:p-8 min-h-screen">
+
+    <div class="w-full max-w-6xl mx-auto fade-in">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Genshin Rotation Visualizer</h1>
+            <p class="text-gray-500 mt-2">Visualize optimized gcsim team rotations.</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-200">
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+                <!-- Character Dropdown -->
+                <div class="flex-grow w-full md:w-auto">
+                    <label for="character-select" class="block text-sm font-medium text-gray-700 mb-2">Select a Character:</label>
+                    <select id="character-select" class="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                        <option value="xiao">Xiao</option>
+                        <option value="mualani" selected>Mualani</option>
+                    </select>
+                </div>
+                <!-- Team Dropdown -->
+                <div class="flex-grow w-full md:w-auto">
+                    <label for="team-select" class="block text-sm font-medium text-gray-700 mb-2">Select a Team Rotation:</label>
+                    <select id="team-select" class="w-full bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                    </select>
+                </div>
+                <button id="generate-btn" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 mt-4 md:mt-0 md:self-end">
+                    Generate Visualization
+                </button>
+            </div>
+        </div>
+
+        <!-- Character Icons -->
+        <div id="character-icons" class="flex justify-center items-center space-x-4 mb-6 h-16">
+        </div>
+
+        <!-- Chart Container -->
+        <div class="bg-white p-4 rounded-xl shadow-md border border-gray-200">
+            <div id="chart-container" class="relative" style="height: 400px;">
+                <canvas id="rotationChart"></canvas>
+            </div>
+            <p id="rotation-notes" class="text-center text-gray-500 mt-4 text-sm"></p>
+        </div>
+    </div>
+
+    <script>
+        const TEAM_DATA = {
+            "xiao": {
+                "xiao_hypercarry": { 
+                    team: ["Xiao", "Xianyun", "Furina", "Faruzan"],
+                    displayName: "Hypercarry (Furina)",
+                    notes: "Xiao — Xianyun — Furina — Faruzan" 
+                },
+                "xiao_bennett_hyper": {
+                    team: ["Xiao", "Xianyun", "Faruzan", "Bennett"],
+                    displayName: "Hypercarry (Bennett)",
+                    notes: "Xiao — Xianyun — Faruzan — Bennett"
+                },
+                "xiao_double_geo": {
+                    team: ["Xiao", "Jean", "Albedo", "Zhongli"],
+                    displayName: "Double Geo",
+                    notes: "Xiao - Jean - Albedo — Zhongli"
+                }
+            },
+            "mualani": {
+                "mualani_sucrose": {
+                    team: ["Mualani", "Mavuika", "Xilonen", "Sucrose"],
+                    displayName: "Hypercarry (Sucrose)",
+                    notes: "Mualani — Mavuika — Xilonen — Sucrose"
+                },
+                "mualani_citlali": {
+                    team: ["Mualani", "Mavuika", "Xilonen", "Citlali"],
+                    displayName: "Hypercarry (Citlali)",
+                    notes: "Mualani — Mavuika — Xilonen — Citlali"
+                },
+                "mualani_vape": {
+                    team: ["Mualani", "Xiangling", "Kazuha", "Zhongli"],
+                    displayName: "Standard Vaporize",
+                    notes: "Mualani — Xiangling — Kazuha — Zhongli"
+                }
+            }
+        };
+
+        const characterSelect = document.getElementById('character-select');
+        const teamSelect = document.getElementById('team-select');
+        const generateBtn = document.getElementById('generate-btn');
+        const iconsContainer = document.getElementById('character-icons');
+        const notesContainer = document.getElementById('rotation-notes');
+        let rotationChart = null;
+        
+        function populateTeamSelect() {
+            const selectedChar = characterSelect.value;
+            const teams = TEAM_DATA[selectedChar];
+            
+            teamSelect.innerHTML = ''; 
+
+            if (teams) {
+                for (const teamKey in teams) {
+                    const option = document.createElement('option');
+                    option.value = teamKey;
+                    option.textContent = teams[teamKey].displayName;
+                    teamSelect.appendChild(option);
+                }
+            }
+        }
+
+        characterSelect.addEventListener('change', populateTeamSelect);
+
+        generateBtn.addEventListener('click', async () => {
+            const selectedChar = characterSelect.value;
+            const selectedTeamKey = teamSelect.value;
+            
+            if (!selectedTeamKey) {
+                alert("Please select a team.");
+                return;
+            }
+
+            displayTeamInfo(selectedChar, selectedTeamKey);
+
+            try {
+                const response = await fetch(`/get_rotation/${selectedTeamKey}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const rotationSequence = await response.json();
+                const chartData = generateChartData(rotationSequence, selectedChar, selectedTeamKey);
+                renderChart(chartData);
+            } catch (error) {
+                console.error("Failed to fetch or process rotation data:", error);
+                alert("Could not load rotation data. Check the console for more details.");
+            }
+        });
+        
+        function displayTeamInfo(charKey, teamKey) {
+            const teamInfo = TEAM_DATA[charKey][teamKey];
+            if (!teamInfo) return;
+
+            iconsContainer.innerHTML = '';
+            teamInfo.team.forEach(charName => {
+                const charData = CHARACTER_DATA[charName];
+                if (charData) {
+                    const img = document.createElement('img');
+                    img.src = charData.icon;
+                    img.alt = charName;
+                    img.title = charName;
+                    img.className = 'w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-gray-300 object-cover shadow-sm transition-transform duration-200 hover:scale-110 hover:shadow-md';
+                    iconsContainer.appendChild(img);
+                }
+            });
+            notesContainer.textContent = teamInfo.notes;
+        }
+
+        function generateChartData(sequence, charKey, teamKey) {
+            const characterOrder = TEAM_DATA[charKey][teamKey].team;
+            const datasets = [];
+            const abilityColors = {
+                'Skill': 'rgba(59, 130, 246, 0.8)',
+                'Burst': 'rgba(239, 68, 68, 0.8)',
+                'Plunge': 'rgba(245, 158, 11, 0.7)',
+                'Normal Attack': 'rgba(16, 185, 129, 0.7)'
+            };
+
+            let currentTime = 0.0;
+
+            sequence.forEach(action => {
+                const charName = action.character;
+                const startTime = currentTime;
+                const endTime = startTime + action.duration;
+
+                const data = characterOrder.map(char => 
+                    char === charName ? [startTime, endTime] : null
+                );
+                
+                const tooltipLabel = `${charName} - ${action.raw_ability}`;
+
+                datasets.push({
+                    label: tooltipLabel,
+                    data: data,
+                    backgroundColor: abilityColors[action.ability] || 'rgba(139, 92, 246, 0.8)',
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.9,
+                    borderSkipped: false,
+                });
+
+                currentTime = endTime;
+            });
+
+            return { labels: characterOrder, datasets };
+        }
+
+        function renderChart(chartData) {
+            const ctx = document.getElementById('rotationChart').getContext('2d');
+            if (rotationChart) {
+                rotationChart.destroy();
+            }
+            rotationChart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)',
+                                color: '#4b5563',
+                                font: { size: 14 }
+                            },
+                            ticks: { color: '#4b5563' },
+                            grid: { color: '#e5e7eb' },
+                            stacked: false, 
+                        },
+                        y: {
+                            ticks: { color: '#1f2937', font: { size: 14 } },
+                            grid: { display: false },
+                            stacked: true,
+                        }
+                    }
+                }
+            });
+        }
+        
+        window.addEventListener('load', () => {
+             populateTeamSelect();
+             const initialChar = characterSelect.value;
+             const initialTeam = teamSelect.value;
+             displayTeamInfo(initialChar, initialTeam);
+             generateBtn.click();
+        });
+
+    </script>
+</body>
+</html>
+
