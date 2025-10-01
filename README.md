@@ -27,7 +27,7 @@ To run this application on a local machine, please follow the steps below.
 
     Clone the repository:
 
-    git clone <your-github-repo-link>
+    git clone <https://github.com/adamevangelista/genshin-rotation-visualizer>
     cd genshin-rotation-visualizer
 
     Install dependencies:
